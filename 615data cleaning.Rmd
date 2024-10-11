@@ -1,0 +1,145 @@
+---
+title: "615 strawberry"
+output: html_document
+date: "2024-10-04"
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+```
+
+## read and explore the data
+```{r}
+#| label: load libraries and set options
+#| warning: false
+#| message: false
+#| 
+
+library(knitr)  
+library(kableExtra)
+library(tidyverse)
+```
+
+Read the data and take a first look
+
+```{r}
+#| label: read data - glimpse 
+
+strawberry <- read_csv("strawberries25_v3.csv", col_names = TRUE)
+
+glimpse(strawberry)
+unique(strawberry$`Data Item`)
+```
+```{r}
+# Read the strawberry dataset
+strawberry <- read_csv("strawberries25_v3.csv", col_names = TRUE)
+
+# Replace "(D)", "(L)", "(NA)" with NA
+strawberry <- strawberry |>
+  mutate(Value = ifelse(Value %in% c("(D)", "(L)", "(NA)"), NA, Value),
+         `CV (%)` = ifelse(`CV (%)` %in% c("(D)", "(L)", "(NA)"), NA, `CV (%)`))
+strawberry$Value <- as.numeric(str_replace(strawberry$Value, ",", ""))
+
+# View the processed data
+glimpse(strawberry) 
+
+# Create two new datasets: CENSUS and SURVEY
+census_data <- strawberry |> filter(Program == "CENSUS")
+survey_data <- strawberry |> filter(Program == "SURVEY")
+
+# Filter organic data
+organic_data <- census_data |>
+  filter(str_detect(`Data Item`, "ORGANIC"))
+
+# Filter non-organic data
+non_organic_data <- census_data |>
+  filter(!str_detect(`Data Item`, "ORGANIC"))
+
+# Split the 'Data Item' column for non-organic data
+non_organic_data <- non_organic_data |>
+  separate_wider_delim(  cols = `Data Item`,
+                         delim = "-",
+                         names = c("Fruit", "Category"),
+                         too_many = "merge",
+                         too_few = "align_start"
+                       )
+unique(non_organic_data$Category)
+
+# Split the 'Data Item' column for organic data (unsure how to proceed here)
+# Step 1: Split by "," delimiter
+organic_data <- organic_data |> 
+  separate_wider_delim(cols = `Data Item`,
+                       delim = ",",
+                       names = c("Fruit_Type", "Sales", "Others"),
+                       too_many = "merge",  # Merge the extra parts
+                       too_few = "align_start")
+
+# Step 2: Further split the 'Fruit_Type' column by "-" delimiter
+organic_data <- organic_data |> 
+  separate_wider_delim(cols = `Fruit_Type`,
+                       delim = "-",
+                       names = c("Fruit", "Type"),
+                       too_many = "merge",
+                       too_few = "align_start")
+
+# Filter chemical-free data
+# Filter out non-chemical data (without chemical substances)
+non_chemical_data <- survey_data |>
+  filter(!str_detect(Domain, "CHEMICAL"))
+
+# Filter out chemical data (with chemical substances)
+chemical_data <- survey_data |>
+  filter(str_detect(Domain, "CHEMICAL"))
+
+# Split the 'Domain Category' column into 'type', 'name', and 'code'
+chemical_data <- chemical_data |>
+  # Step 1: Split by comma to get 'type' and remaining part
+  separate_wider_delim(cols = `Domain Category`, 
+                       delim = ",", 
+                       names = c("type", "Rest"),
+                       too_many = "merge",  # Merge the extra parts
+                       too_few = "align_start") |>
+  # Step 2: Split the remaining part by colon to get 'name' and 'code'
+  separate_wider_delim(cols = Rest, 
+                       delim = ":",
+                       names = c("name", "code"),
+                       too_many = "merge",  # Merge the extra parts
+                       too_few = "align_start") |>
+  # Trim the extra spaces
+  mutate(across(c(type, name, code), ~ str_trim(.)))
+
+```
+```{r}
+# Filter the data for California based on the 'State' column
+CA_data <- non_organic_data |>
+  filter(State == "CALIFORNIA")
+# Find NA in the 'Value' column and fill the first 288 rows with 4
+CA_data <- CA_data |>
+  mutate(Value = ifelse(is.na(Value) & row_number() <= 288, 4, Value))
+# Find NA in the 'Value' column and fill the first 285 rows with 4
+CA_data <- CA_data |>
+  mutate(Value = ifelse(is.na(Value) & row_number() <= 285, 4, Value))
+
+# Filter the data for Florida and save it as FL_data
+FL_data <- non_organic_data |> 
+  filter(State == "FLORIDA")
+# Find NA in the 'Value' column and fill the first 134 rows with 3489
+FL_data <- FL_data |>
+  mutate(Value = ifelse(is.na(Value) & row_number() <= 134, 3489, Value))
+# Find NA in the 'Value' column and fill the first 135 rows with 3489
+FL_data <- FL_data |>
+  mutate(Value = ifelse(is.na(Value) & row_number() <= 135, 3489, Value))
+# Find NA in the 'Value' column and fill the first 136 rows with 3489
+FL_data <- FL_data |>
+  mutate(Value = ifelse(is.na(Value) & row_number() <= 136, 3489, Value))
+# Find NA in the 'Value' column and fill the first 149 rows with 43
+FL_data <- FL_data |>
+  mutate(Value = ifelse(is.na(Value) & row_number() <= 149, 43, Value))
+# Find NA in the 'Value' column and fill the first 150 rows with 43
+FL_data <- FL_data |>
+  mutate(Value = ifelse(is.na(Value) & row_number() <= 150, 43, Value))
+# Find NA in the 'Value' column and fill the first 151 rows with 43
+FL_data <- FL_data |>
+  mutate(Value = ifelse(is.na(Value) & row_number() <= 151, 43, Value))
+
+```
